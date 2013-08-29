@@ -134,7 +134,9 @@
             this.$get = ['$rootScope', '$q', '$http', '$templateCache', '$route', '$routeParams', '$injector',
                 function ($rootScope, $q, $http, $templateCache, $route, $routeParams, $injector) {
 
-                    var $routeSegment = {
+
+                    var resolvingSemaphoreChain = {},
+                        $routeSegment = {
 
                         /**
                          * Fully qualified name of current active route
@@ -177,21 +179,28 @@
                          * @returns {Boolean}
                          */
                         contains: function (val) {
-                            for (var i = 0; i < this.chain.length; i++)
-                                if (this.chain[i].name == val)
+                            for (var i = 0; i < this.chain.length; i++) {
+                                if (this.chain[i].name == val) {
                                     return true;
+                                }
+                            }
                             return false;
+                        },
+
+                        reload: function() {
+                            resolvingSemaphoreChain = {};
+                            this.chain = [];
+                            this.name = '';
+                            $route.reload();
                         }
                     };
-
-                    var resolvingSemaphoreChain = {};
 
                     // When a route changes, all interested parties should be notified about new segment chain
                     $rootScope.$on('$routeChangeSuccess', function (event, args) {
                         var route = args.$route || args.$$route;
                         if (route && route.segment) {
                             var segmentName = route.segment;
-                            var segmentNameChain = segmentName.split(".");
+                            var segmentNameChain = segmentName.split('.');
                             var updates = [];
 
                             for (var i = 0; i < segmentNameChain.length; i++) {
@@ -200,11 +209,12 @@
 
                                 if (resolvingSemaphoreChain[i] != newSegment.name || isDependenciesChanged(newSegment)) {
 
-                                    if ($routeSegment.chain[i] && $routeSegment.chain[i].name == newSegment.name && !isDependenciesChanged(newSegment))
+                                    if ($routeSegment.chain[i] && $routeSegment.chain[i].name == newSegment.name && !isDependenciesChanged(newSegment)) {
                                     // if we went back to the same state as we were before resolving new segment
                                         resolvingSemaphoreChain[i] = newSegment.name;
-                                    else
+                                    } else {
                                         updates.push({index: i, newSegment: newSegment});
+                                    }
                                 }
                             }
 
@@ -214,15 +224,12 @@
                                 for (i = 0; i < updates.length; i++) {
                                     (function (i) {
                                         curSegmentPromise = curSegmentPromise.then(function () {
-
                                             return updateSegment(updates[i].index, updates[i].newSegment);
-
                                         }).then(function (result) {
-
-                                                if (typeof result.success != 'undefined') {
-                                                    broadcast(result.success);
-                                                }
-                                            });
+                                            if (typeof result.success != 'undefined') {
+                                                broadcast(result.success);
+                                            }
+                                        });
                                     })(i);
                                 }
                             }
@@ -328,14 +335,15 @@
                                 if (params.watcher) {
 
                                     var getWatcherValue = function () {
-                                        if (!angular.isFunction(params.watcher))
+                                        if (!angular.isFunction(params.watcher)) {
                                             throw new Error('Watcher is not a function in segment `' + name + '`');
+                                        }
 
                                         return $injector.invoke(
                                             params.watcher,
                                             {},
                                             {segment: $routeSegment.chain[index]});
-                                    }
+                                    };
 
                                     var lastWatcherValue = getWatcherValue();
 

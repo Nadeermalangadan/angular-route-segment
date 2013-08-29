@@ -29,7 +29,7 @@
 
                         try {
                             // angular 1.1.x
-                            var $animator = $injector.get('$animator')
+                            var $animator = $injector.get('$animator');
                             animate = $animator($scope, tAttrs);
                         }
                         catch(e) {}
@@ -95,8 +95,9 @@
                             if (segment.params.controller) {
                                 locals.$scope = currentScope;
                                 controller = $controller(segment.params.controller, locals);
-                                if(segment.params.controllerAs)
+                                if(segment.params.controllerAs) {
                                     currentScope[segment.params.controllerAs] = controller;
+                                }
                                 currentElement.data('$ngControllerController', controller);
                                 currentElement.children().data('$ngControllerController', controller);
                             }
@@ -105,9 +106,9 @@
                             currentScope.$emit('$viewContentLoaded');
                             currentScope.$eval(onloadExp);
                         }
-                    }
+                    };
                 }
-            }
+            };
         }]);
 
 })(angular);

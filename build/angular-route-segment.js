@@ -1,34 +1,37 @@
 /**
- * angular-route-segment v1.2.0
+ * angular-route-segment 
  * https://angular-route-segment.com
  * @author Artem Chivchalov
  * @license MIT License http://opensource.org/licenses/MIT
  */
+'use strict';
+
 (function (angular) {
-    'use strict';
 
     angular.module('route-segment', []).provider('$routeSegment',
         ['$routeProvider', function ($routeProvider) {
 
-            var $routeSegmentProvider = this,
-                options = $routeSegmentProvider.options = {
+            var $routeSegmentProvider = this;
 
-                    /**
-                     * When true, it will resolve `templateUrl` automatically via $http service and put its
-                     * contents into `template`.
-                     * @type {boolean}
-                     */
-                    autoLoadTemplates: false,
+            var options = $routeSegmentProvider.options = {
 
-                    /**
-                     * When true, all attempts to call `within` method on non-existing segments will throw an error (you would
-                     * usually want this behavior in production). When false, it will transparently create new empty segment
-                     * (can be useful in isolated tests).
-                     * @type {boolean}
-                     */
-                    strictMode: false
-                },
-                segments = this.segments = {},
+                /**
+                 * When true, it will resolve `templateUrl` automatically via $http service and put its
+                 * contents into `template`.
+                 * @type {boolean}
+                 */
+                autoLoadTemplates: false,
+
+                /**
+                 * When true, all attempts to call `within` method on non-existing segments will throw an error (you would
+                 * usually want this behavior in production). When false, it will transparently create new empty segment
+                 * (can be useful in isolated tests).
+                 * @type {boolean}
+                 */
+                strictMode: false
+            };
+
+            var segments = this.segments = {},
                 rootPointer = pointer(segments, null);
 
             function camelCase(name) {
@@ -39,8 +42,9 @@
 
             function pointer(segment, parent) {
 
-                if (!segment)
+                if (!segment) {
                     throw new Error('Invalid pointer segment');
+                }
 
                 var lastAddedName;
 
@@ -86,13 +90,13 @@
                         childName = childName || lastAddedName;
 
                         if (child = segment[camelCase(childName)]) {
-                            if (child.children == undefined)
+                            if (typeof child.children == 'undefined') {
                                 child.children = {};
-                        }
-                        else {
-                            if (options.strictMode)
+                            }
+                        } else {
+                            if (options.strictMode) {
                                 throw new Error('Cannot get into unknown `' + childName + '` segment');
-                            else {
+                            } else {
                                 child = segment[camelCase(childName)] = {params: {}, children: {}};
                             }
                         }
@@ -114,7 +118,7 @@
                     root: function () {
                         return rootPointer;
                     }
-                }
+                };
             }
 
             /**
@@ -190,10 +194,9 @@
 
                     // When a route changes, all interested parties should be notified about new segment chain
                     $rootScope.$on('$routeChangeSuccess', function (event, args) {
-
                         var route = args.$route || args.$$route;
                         if (route && route.segment) {
-
+                            console.info(route);
                             var segmentName = route.segment;
                             var segmentNameChain = segmentName.split(".");
                             var updates = [];
@@ -215,7 +218,7 @@
                             var curSegmentPromise = $q.when();
 
                             if (updates.length > 0) {
-                                for (var i = 0; i < updates.length; i++) {
+                                for (i = 0; i < updates.length; i++) {
                                     (function (i) {
                                         curSegmentPromise = curSegmentPromise.then(function () {
 
@@ -223,10 +226,10 @@
 
                                         }).then(function (result) {
 
-                                                if (result.success != undefined) {
+                                                if (typeof result.success != 'undefined') {
                                                     broadcast(result.success);
                                                 }
-                                            })
+                                            });
                                     })(i);
                                 }
                             }
@@ -238,8 +241,9 @@
                                     var oldLength = $routeSegment.chain.length;
                                     var shortenBy = $routeSegment.chain.length - segmentNameChain.length;
                                     $routeSegment.chain.splice(-shortenBy, shortenBy);
-                                    for (var i = segmentNameChain.length; i < oldLength; i++)
+                                    for (var i = segmentNameChain.length; i < oldLength; i++) {
                                         updateSegment(i, null);
+                                    }
                                 }
                             })
 
@@ -250,11 +254,13 @@
                     function isDependenciesChanged(segment) {
 
                         var result = false;
-                        if (segment.params.dependencies)
+                        if (segment.params.dependencies) {
                             angular.forEach(segment.params.dependencies, function (name) {
-                                if (!angular.equals($routeSegment.$routeParams[name], $routeParams[name]))
+                                if (!angular.equals($routeSegment.$routeParams[name], $routeParams[name])) {
                                     result = true;
+                                }
                             });
+                        }
                         return result;
                     }
 
@@ -272,43 +278,46 @@
 
                         resolvingSemaphoreChain[index] = segment.name;
 
-                        if (segment.params.untilResolved) {
+                        if (segment.params && segment.params.untilResolved) {
                             return resolve(index, segment.name, segment.params.untilResolved)
                                 .then(function (result) {
-                                    if (result.success != undefined)
+                                    if (typeof result.success != 'undefined') {
                                         broadcast(index);
+                                    }
                                     return resolve(index, segment.name, segment.params);
-                                })
-                        }
-                        else
+                                });
+                        } else {
                             return resolve(index, segment.name, segment.params);
+                        }
                     }
 
                     function resolve(index, name, params) {
-
                         var locals = angular.extend({}, params.resolve);
 
                         angular.forEach(locals, function (value, key) {
                             locals[key] = angular.isString(value) ? $injector.get(value) : $injector.invoke(value);
                         });
 
-                        if (params.template)
+                        if (params.template) {
                             locals.$template = params.template;
+                        }
 
-                        if (options.autoLoadTemplates && params.templateUrl)
+                        if (options.autoLoadTemplates && params.templateUrl) {
                             locals.$template =
                                 $http.get(angular.isFunction(params.templateUrl) ? params.templateUrl() : params.templateUrl,
                                     {cache: $templateCache})
                                     .then(function (response) {
                                         return response.data;
                                     });
+                        }
 
                         return $q.all(locals).then(
 
                             function (resolvedLocals) {
 
-                                if (resolvingSemaphoreChain[index] != name)
+                                if (resolvingSemaphoreChain[index] != name) {
                                     return $q.reject();
+                                }
 
                                 $routeSegment.chain[index] = {
                                     name: name,
@@ -316,9 +325,10 @@
                                     locals: resolvedLocals,
                                     reload: function () {
                                         updateSegment(index, this).then(function (result) {
-                                            if (result.success != undefined)
+                                            if (typeof result.success != 'undefined') {
                                                 broadcast(index);
-                                        })
+                                            }
+                                        });
                                     }
                                 };
 
@@ -339,11 +349,12 @@
                                     $routeSegment.chain[index].clearWatcher = $rootScope.$watch(
                                         getWatcherValue,
                                         function (value) {
-                                            if (value == lastWatcherValue) // should not being run when $digest-ing at first time
+                                            if (value == lastWatcherValue) { // should not being run when $digest-ing at first time
                                                 return;
+                                            }
                                             lastWatcherValue = value;
                                             $routeSegment.chain[index].reload();
-                                        })
+                                        });
                                 }
 
                                 return {success: index};
@@ -356,11 +367,11 @@
                                         return $q.when(error);
                                     }};
                                     return resolve(index, name, angular.extend({resolve: newResolve}, params.resolveFailed));
+                                } else {
+                                    throw new Error('Resolving failed with a reason `' + error +
+                                        '`, but no `resolveFailed` provided for segment `' + name + '`');
                                 }
-                                else
-                                    throw new Error('Resolving failed with a reason `' + error + '`, but no `resolveFailed` ' +
-                                        'provided for segment `' + name + '`');
-                            })
+                            });
                     }
 
                     function broadcast(index) {
@@ -368,33 +379,39 @@
                         $routeSegment.$routeParams = angular.copy($routeParams);
 
                         $routeSegment.name = '';
-                        for (var i = 0; i < $routeSegment.chain.length; i++)
-                            $routeSegment.name += $routeSegment.chain[i].name + ".";
+                        for (var i = 0; i < $routeSegment.chain.length; i++) {
+                            $routeSegment.name += $routeSegment.chain[i].name + '.';
+                        }
                         $routeSegment.name = $routeSegment.name.substr(0, $routeSegment.name.length - 1);
 
                         $rootScope.$broadcast('routeSegmentChange', {
                             index: index,
-                            segment: $routeSegment.chain[index] || null });
+                            segment: $routeSegment.chain[index] || null
+                        });
                     }
 
                     function getSegmentInChain(segmentIdx, segmentNameChain) {
 
-                        if (!segmentNameChain)
+                        if (!segmentNameChain) {
                             return null;
+                        }
 
-                        if (segmentIdx >= segmentNameChain.length)
+                        if (segmentIdx >= segmentNameChain.length) {
                             return null;
+                        }
 
                         var curSegment = segments, nextName;
                         for (var i = 0; i <= segmentIdx; i++) {
 
                             nextName = segmentNameChain[i];
 
-                            if (curSegment[ camelCase(nextName) ] != undefined)
-                                curSegment = curSegment[ camelCase(nextName) ];
+                            if (typeof curSegment[camelCase(nextName)] != 'undefined') {
+                                curSegment = curSegment[camelCase(nextName)];
+                            }
 
-                            if (i < segmentIdx)
+                            if (i < segmentIdx) {
                                 curSegment = curSegment.children;
+                            }
                         }
 
                         return {
@@ -405,123 +422,118 @@
 
                     return $routeSegment;
                 }];
-        }])
+        }]);
 
-
-})(angular);
-;
-'use strict';
+})(angular);;'use strict';
 
 /**
  * appViewSegment directive
- * It is based on ngView directive code:
+ * It is based on ngView directive code: 
  * https://github.com/angular/angular.js/blob/master/src/ngRoute/directive/ngView.js
  */
 
-(function (angular) {
+(function(angular) {
 
-    angular.module('view-segment', [ 'route-segment' ]).directive('appViewSegment',
-        ['$route', '$compile', '$controller', '$routeParams', '$routeSegment', '$q', '$injector',
-            function ($route, $compile, $controller, $routeParams, $routeSegment, $q, $injector) {
+    angular.module( 'view-segment', [ 'route-segment' ] ).directive( 'appViewSegment',
+    ['$route', '$compile', '$controller', '$routeParams', '$routeSegment', '$q', '$injector',
+        function($route, $compile, $controller, $routeParams, $routeSegment, $q, $injector) {
 
-                return {
-                    restrict: 'ECA',
-                    priority: 500,
-                    compile: function (tElement, tAttrs) {
+            return {
+                restrict : 'ECA',
+                priority: 500,
+                compile : function(tElement, tAttrs) {
 
-                        var defaultContent = tElement.html(), isDefault = true,
-                            anchor = angular.element(document.createComment(' view-segment '));
+                    var defaultContent = tElement.html(), isDefault = true,
+                    anchor = angular.element(document.createComment(' view-segment '));
 
-                        tElement.prepend(anchor);
+                    tElement.prepend(anchor);
 
-                        return function ($scope) {
+                    return function($scope) {
 
-                            var currentScope, currentElement, currentSegment, onloadExp = tAttrs.onload || '', animate,
-                                viewSegmentIndex = parseInt(tAttrs.appViewSegment);
+                        var currentScope, currentElement, currentSegment, onloadExp = tAttrs.onload || '', animate,
+                        viewSegmentIndex = parseInt(tAttrs.appViewSegment);
 
-                            try {
-                                // angular 1.1.x
-                                var $animator = $injector.get('$animator')
-                                animate = $animator($scope, tAttrs);
-                            }
-                            catch (e) {
-                            }
-                            try {
-                                // angular 1.2.x
-                                animate = $injector.get('$animate');
-                            }
-                            catch (e) {
-                            }
+                        try {
+                            // angular 1.1.x
+                            var $animator = $injector.get('$animator')
+                            animate = $animator($scope, tAttrs);
+                        }
+                        catch(e) {}
+                        try {
+                            // angular 1.2.x
+                            animate = $injector.get('$animate');
+                        }
+                        catch(e) {}
 
-                            if ($routeSegment.chain[viewSegmentIndex])
-                                update($routeSegment.chain[viewSegmentIndex]);
+                        if($routeSegment.chain[viewSegmentIndex])
+                            update($routeSegment.chain[viewSegmentIndex]);
 
-                            // Watching for the specified route segment and updating contents
-                            $scope.$on('routeSegmentChange', function (event, args) {
-                                if (args.index == viewSegmentIndex && currentSegment != args.segment)
-                                    update(args.segment);
-                            });
+                        // Watching for the specified route segment and updating contents
+                        $scope.$on('routeSegmentChange', function(event, args) {
+                            if(args.index == viewSegmentIndex && currentSegment != args.segment)
+                                update(args.segment);
+                        });
 
-                            function clearContent() {
+                        function clearContent() {
 
-                                if (currentElement) {
-                                    animate.leave(currentElement);
-                                    currentElement = null;
-                                }
-
-                                if (currentScope) {
-                                    currentScope.$destroy();
-                                    currentScope = null;
-                                }
+                            if(currentElement) {
+                                animate.leave(currentElement);
+                                currentElement = null;
                             }
 
+                            if (currentScope) {
+                                currentScope.$destroy();
+                                currentScope = null;
+                            }
+                        }
 
-                            function update(segment) {
 
-                                currentSegment = segment;
+                        function update(segment) {
 
-                                if (isDefault) {
-                                    isDefault = false;
-                                    tElement.replaceWith(anchor);
-                                }
+                            currentSegment = segment;
 
-                                if (!segment) {
-                                    clearContent();
-                                    currentElement = tElement.clone();
-                                    currentElement.html(defaultContent);
-                                    animate.enter(currentElement, null, anchor);
-                                    $compile(currentElement, false, 499)($scope);
-                                    return;
-                                }
+                            if(isDefault) {
+                                isDefault = false;
+                                tElement.replaceWith(anchor);
+                            }
 
-                                var locals = angular.extend({}, segment.locals),
-                                    template = locals && locals.$template;
-
+                            if(!segment) {
                                 clearContent();
-
                                 currentElement = tElement.clone();
-                                currentElement.html(template ? template : defaultContent);
-                                animate.enter(currentElement, null, anchor);
-
-                                var link = $compile(currentElement, false, 499), controller;
-
-                                currentScope = $scope.$new();
-                                if (segment.params.controller) {
-                                    locals.$scope = currentScope;
-                                    controller = $controller(segment.params.controller, locals);
-                                    if (segment.params.controllerAs)
-                                        currentScope[segment.params.controllerAs] = controller;
-                                    currentElement.data('$ngControllerController', controller);
-                                    currentElement.children().data('$ngControllerController', controller);
-                                }
-
-                                link(currentScope);
-                                currentScope.$emit('$viewContentLoaded');
-                                currentScope.$eval(onloadExp);
+                                currentElement.html(defaultContent);
+                                animate.enter( currentElement, null, anchor );
+                                $compile(currentElement, false, 499)($scope);
+                                return;
                             }
+
+                            var locals = angular.extend({}, segment.locals),
+                            template = locals && locals.$template;
+
+                            clearContent();
+
+                            currentElement = tElement.clone();
+                            currentElement.html(template ? template : defaultContent);
+                            animate.enter( currentElement, null, anchor );
+
+                            var link = $compile(currentElement, false, 499), controller;
+
+                            currentScope = $scope.$new();
+                            if (segment.params.controller) {
+                                locals.$scope = currentScope;
+                                controller = $controller(segment.params.controller, locals);
+                                if(segment.params.controllerAs)
+                                    currentScope[segment.params.controllerAs] = controller;
+                                currentElement.data('$ngControllerController', controller);
+                                currentElement.children().data('$ngControllerController', controller);
+                            }
+
+                            link(currentScope);
+                            currentScope.$emit('$viewContentLoaded');
+                            currentScope.$eval(onloadExp);
                         }
                     }
                 }
-            }]);
+            }
+        }]);
 
 })(angular);
